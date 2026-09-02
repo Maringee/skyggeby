@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink-950 text-steel-300 font-sans antialiased;
+    background-image:
+      radial-gradient(900px 520px at 12% -10%, rgba(232, 38, 60, 0.13), transparent 60%),
+      radial-gradient(760px 480px at 96% 4%, rgba(109, 77, 240, 0.15), transparent 62%),
+      radial-gradient(1000px 700px at 50% 120%, rgba(76, 49, 184, 0.1), transparent 65%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    @apply bg-blood-600/60 text-white;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-ink-900;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-ink-700 rounded-full border-2 border-ink-900;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-600;
+  }
+
+  input,
+  button,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply relative rounded-xl border border-white/[0.06] bg-ink-900/70 shadow-panel backdrop-blur-sm;
+  }
+
+  .panel-edge::before {
+    content: '';
+    @apply pointer-events-none absolute inset-x-0 top-0 h-px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(232, 38, 60, 0.55),
+      rgba(139, 92, 246, 0.45),
+      transparent
+    );
+  }
+
+  .label-xs {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-steel-500;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-white/[0.07] bg-ink-850/80 px-4 py-3 text-white
+      placeholder:text-steel-500/70 outline-none transition
+      focus:border-blood-600/70 focus:ring-2 focus:ring-blood-600/25;
+  }
+
+  .btn {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3
+      text-sm font-semibold uppercase tracking-[0.14em] transition
+      disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-blood-600 to-blood-500 text-white
+      shadow-glow hover:from-blood-500 hover:to-blood-400 active:translate-y-px;
+  }
+
+  .btn-secondary {
+    @apply btn border border-violet-600/40 bg-violet-700/15 text-violet-400
+      hover:border-violet-500/70 hover:bg-violet-700/25 active:translate-y-px;
+  }
+
+  .btn-ghost {
+    @apply btn border border-white/[0.08] bg-white/[0.02] text-steel-300
+      hover:border-white/20 hover:text-white active:translate-y-px;
+  }
+
+  .stat-value {
+    @apply font-mono text-2xl font-semibold tabular-nums text-white;
+  }
+}
+
+@layer utilities {
+  .text-glow-red {
+    text-shadow: 0 0 22px rgba(232, 38, 60, 0.5);
+  }
+  .grain::after {
+    content: '';
+    @apply pointer-events-none fixed inset-0 z-50 opacity-[0.035] bg-grain;
+    mix-blend-mode: overlay;
+  }
+}

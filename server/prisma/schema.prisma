@@ -1,0 +1,561 @@
+// SKYGGEBY - datamodell
+// Databasen er autoritativ. Klienten sender aldri verdier som penger, XP eller heat.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// A player account. `passwordHash` never leaves the server.
+model Player {
+  id            String @id @default(cuid())
+  username      String @unique
+  usernameLower String @unique
+  passwordHash  String
+
+  cash        Int @default(2500)
+  bankBalance Int @default(0)
+  health      Int @default(100)
+  reputation  Int @default(0)
+  heat        Int @default(0)
+  level       Int @default(1)
+  xp          Int @default(0)
+
+  energy          Int      @default(100)
+  maxEnergy       Int      @default(100)
+  /// Last time passive energy regeneration was settled.
+  energyUpdatedAt DateTime @default(now())
+  /// Last time passive heat decay was settled.
+  heatUpdatedAt   DateTime @default(now())
+
+  /// Matches a `DistrictId` from shared/src/districts.ts. The catalogue lives
+  /// in code, so adding a district needs no migration.
+  currentDistrictId String @default("sentrum")
+
+  /// Cooldown source of truth for exploring the current district.
+  lastExploredAt DateTime?
+
+  /// Unspent skill points. Granted by levelling, spent on specialisation.
+  /// Separate from XP: XP decides level, points decide what you are good at.
+  skillPoints Int @default(0)
+
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  sessions      Session[]
+  transactions  Transaction[]
+  crimeAttempts CrimeAttempt[]
+  information   Information[]
+  skills        PlayerSkill[]
+  assets        Asset[]
+  vehicles      Vehicle[]
+  businesses    Business[]
+  properties    Property[]
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  contacts      ContactRelationship[]
+
+  @@map("players")
+}
+
+/// Server-side login session. The client only ever holds the opaque token.
+model Session {
+  id       String @id @default(cuid())
+  token    String @unique
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  userAgent String?
+  ip        String?
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([playerId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+enum TransactionType {
+  STARTKAPITAL
+  BANK_INNSKUDD
+  BANK_UTTAK
+  BANK_GEBYR
+  OVERFORING_INN
+  OVERFORING_UT
+  INNTEKT
+  UTGIFT
+  EIENDEL_KJOP
+  EIENDEL_SALG
+  VIRKSOMHET_KJOP
+  VIRKSOMHET_UTTAK
+  EIENDOM_KJOP
+  EIENDOM_SALG
+  KORREKSJON
+}
+
+enum Ledger {
+  CASH
+  BANK
+}
+
+/// Whether a contact will talk to the player right now.
+///
+/// A foundation for a later availability system; everyone is AVAILABLE in v1.
+enum ContactStatus {
+  AVAILABLE
+  BUSY
+  UNAVAILABLE
+}
+
+/// What one player's relationship with one contact looks like.
+///
+/// Who the contact *is* lives in shared/src/contacts.ts - this table stores
+/// only the part that differs per player. There is no contact table, so adding
+/// a person needs no migration; `contactId` is validated against the catalogue
+/// server-side instead of by a foreign key.
+model ContactRelationship {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// Matches a stable id from the shared catalogue.
+  contactId String
+
+  /// 0-100, decided by the server. A database CHECK enforces the range.
+  trust  Int           @default(10)
+  status ContactStatus @default(AVAILABLE)
+
+  discoveredAt      DateTime  @default(now())
+  lastInteractionAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The unique constraint is what makes discovery safe under concurrency: a
+  /// player can never end up knowing the same person twice.
+  @@unique([playerId, contactId])
+  @@index([playerId])
+  @@index([playerId, status])
+  @@map("contact_relationships")
+}
+
+enum AssetCategory {
+  VEHICLE
+  EQUIPMENT
+  TECHNOLOGY
+  VALUABLE
+}
+
+enum AssetStatus {
+  ACTIVE
+  STORED
+  DAMAGED
+  SEIZED
+}
+
+/// Whether an asset is carried in the player's inventory.
+///
+/// Deliberately separate from both `AssetStatus` (its condition) and
+/// `Asset.location` (which district it is in). An asset can be in Sentrum,
+/// ACTIVE and INVENTORY at the same time - the three answer different
+/// questions. `AssetStatus.STORED` means "put away and not in use";
+/// `AssetStorage.STORED` means "not in the inventory".
+enum AssetStorage {
+  INVENTORY
+  STORED
+}
+
+/// A thing a player owns.
+///
+/// The catalogue lives in shared/src/assets.ts, so there is no AssetType table:
+/// the numbers are copied onto the row at purchase time. That keeps an owned
+/// asset stable even if the catalogue is later rebalanced, and means a new type
+/// needs no migration.
+model Asset {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// Matches an id from the shared catalogue.
+  assetTypeId String
+  name        String
+  category    AssetCategory
+
+  /// What was paid. Never changes.
+  purchasePrice Int
+  /// What it is considered worth now. Separate from what was paid.
+  currentValue  Int
+  /// 0-100. A database CHECK enforces the range.
+  condition     Int @default(100)
+
+  /// Kroner per day. Computed but not charged in v1.
+  maintenanceCostPerDay Int
+  /// When upkeep was last settled. Nothing settles it yet.
+  maintenancePaidAt     DateTime @default(now())
+
+  visibility Int
+  risk       Int
+
+  /// District the asset sits in. Set from the player's own row at purchase.
+  location String
+
+  status AssetStatus @default(ACTIVE)
+
+  /// Whether the asset is carried. New and existing assets start outside the
+  /// inventory: buying something never puts it in your hands automatically.
+  storageLocation AssetStorage @default(STORED)
+
+  purchasedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  /// Set only for assets in the VEHICLE category. Selling the asset removes
+  /// the vehicle with it, so the two can never disagree about ownership.
+  vehicle Vehicle?
+
+  @@index([playerId])
+  @@index([playerId, status])
+  @@index([playerId, category])
+  @@index([playerId, storageLocation])
+  @@map("assets")
+}
+
+/// A vehicle a player owns and drives.
+///
+/// Deliberately *not* a replacement for `Asset`: the asset still owns what the
+/// thing is worth, what it cost and what condition it is in. This model owns
+/// the part an asset cannot answer - where the vehicle physically is, and
+/// whether the player is currently driving it.
+///
+/// `Vehicle.locationDistrictId` and `Player.currentDistrictId` are separate
+/// states on purpose. Moving yourself never moves a car, and moving a car never
+/// moves you. That separation is the whole point of the system.
+///
+/// The catalogue lives in shared/src/vehicles.ts, derived from the asset
+/// catalogue, so there is no VehicleType table and a new type needs no
+/// migration.
+model Vehicle {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// The asset this vehicle is. Unique: one asset is never two vehicles, and
+  /// selling the asset cascades this row away.
+  assetId String @unique
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  /// Matches an id from the shared vehicle catalogue.
+  vehicleTypeId String
+  /// The name the player gave it, trimmed and normalised by the server.
+  name          String
+
+  /// Where the vehicle stands. Never written from the player's row implicitly.
+  locationDistrictId String
+
+  /// Whether the player is driving this one. A partial unique index in the
+  /// database allows at most one active vehicle per player.
+  isActive Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([playerId])
+  @@index([playerId, isActive])
+  @@index([locationDistrictId])
+  @@map("vehicles")
+}
+
+/// A private message from one player to another.
+///
+/// Individual messages, not threads: there is no conversation model in v1, and
+/// nothing here groups messages together.
+///
+/// Deletion is per copy. `senderDeletedAt` and `recipientDeletedAt` let each
+/// side clear their own view without destroying the other's, and without ever
+/// rewriting the text of a message somebody has already read.
+model Message {
+  id String @id @default(cuid())
+
+  senderId String
+  sender   Player @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  recipientId String
+  recipient   Player @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  /// 1-100 characters after trimming. A database CHECK enforces it.
+  subject String
+  /// 1-5000 characters after trimming. A database CHECK enforces it.
+  content String
+
+  /// Set the first time the recipient opens it. Once set, it stays set.
+  readAt DateTime?
+
+  /// Per-copy deletion. Neither field ever removes the row.
+  senderDeletedAt    DateTime?
+  recipientDeletedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([recipientId, createdAt])
+  @@index([senderId, createdAt])
+  @@index([recipientId, readAt])
+  @@map("messages")
+}
+
+/// A place a player owns in the city.
+///
+/// Deliberately its own model rather than a kind of `Asset`: an asset is a
+/// thing you carry or store, a property is an address. It has a fixed district,
+/// room for things and a level of security, and none of those questions make
+/// sense for a wristwatch.
+///
+/// The purchase price is copied onto the row on purpose. Value is always
+/// computed from that copy, never from the catalogue, so rebalancing prices
+/// later cannot change what a place somebody already owns is worth.
+///
+/// The catalogue lives in shared/src/properties.ts, so there is no PropertyType
+/// table and a new type needs no migration.
+model Property {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// Matches an id from the shared catalogue.
+  propertyTypeId String
+  /// The name the player gave it, trimmed and normalised by the server.
+  name           String
+
+  /// What was paid. Never changes, and every valuation starts here.
+  purchasePrice Int
+  /// Purchase price scaled by condition. Recomputed whenever condition moves.
+  currentValue  Int
+  /// 0-100. A database CHECK enforces the range. Nothing decays it in v1.
+  condition     Int @default(100)
+
+  /// Room for things. Stored and shown; nothing consumes it in v1.
+  storageCapacity Int
+  /// 1-5. Stored and shown; nothing consumes it in v1.
+  security        Int
+
+  /// The address. Fixed at purchase from the catalogue, never from the player's
+  /// own district, and never moved afterwards.
+  districtId String
+
+  purchasedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([playerId])
+  @@index([playerId, districtId])
+  @@index([districtId])
+  @@map("properties")
+}
+
+/// A business a player owns and runs.
+///
+/// Deliberately its own model rather than a kind of `Asset`: an asset is a
+/// thing you own, a business is a thing you operate. It has its own account,
+/// its own running costs and its own clock, and mixing the two domains would
+/// mean every asset query had to know about settlement.
+///
+/// The catalogue lives in shared/src/businesses.ts, so there is no BusinessType
+/// table and adding a type needs no migration. `businessTypeId` is validated
+/// against the catalogue server-side rather than by a foreign key.
+model Business {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// Matches an id from the shared catalogue.
+  businessTypeId String
+  /// The name the player gave it, trimmed and normalised by the server.
+  name           String
+
+  /// District the business sits in. Read from the catalogue at purchase; the
+  /// client never gets to choose it, and v1 never moves a business.
+  districtId String
+
+  /// Kroner earned but not yet collected. A database CHECK keeps it >= 0.
+  cashBalance Int @default(0)
+
+  /// 0-100. Stored and shown; nothing changes it in v1.
+  condition Int @default(100)
+  /// 0-100. Stored and shown; nothing changes it in v1.
+  activity  Int
+  /// 1-5. Stored and shown; wired to no other system in v1.
+  risk      Int
+
+  purchasedAt DateTime @default(now())
+  /// When earnings were last credited to `cashBalance`. Settlement is lazy:
+  /// there is no cron job, and no daily rows are ever written.
+  lastSettlementAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([playerId])
+  @@index([playerId, districtId])
+  @@map("businesses")
+}
+
+/// One skill's level for one player.
+///
+/// A row per skill rather than six columns on Player, so a seventh skill is a
+/// catalogue entry plus a backfill - never a change to the player model.
+model PlayerSkill {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// Matches a `SkillId` from shared/src/skills.ts.
+  skillId String
+  /// 0-25 in v1. A database CHECK enforces the range.
+  level   Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([playerId, skillId])
+  @@index([playerId])
+  @@map("player_skills")
+}
+
+enum InformationType {
+  RYKTE
+  OBSERVASJON
+  ETTERRETNING
+  KONTAKT
+  HEMMELIGHET
+}
+
+enum InformationSource {
+  UKJENT
+  OBSERVASJON
+  KONTAKT
+  ETTERFORSKNING
+  HENDELSE
+}
+
+enum InformationRelevance {
+  POLITI
+  AKTIVITET
+  SIKKERHET
+  LAGER
+  TRANSPORT
+  MULIGHET
+}
+
+/// A concrete piece of knowledge a player holds.
+///
+/// Every field here is written by the server. `isTrue` in particular is
+/// internal state that must never reach a client: the whole system depends on
+/// the player not knowing in advance whether a tip is any good.
+model Information {
+  id      String @id @default(cuid())
+  ownerId String
+  owner   Player @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  type      InformationType
+  source    InformationSource
+  relevance InformationRelevance
+
+  title   String
+  content String
+
+  /// Matches a `DistrictId`, or null when the information is city-wide.
+  districtId String?
+
+  /// Stated confidence, 0-100. A database CHECK enforces the range.
+  reliability Int
+
+  /// Internal truth. NEVER serialised to the client.
+  isTrue Boolean
+
+  /// Server-side measure of worth at the time of discovery.
+  baseValue Int
+
+  discoveredAt    DateTime  @default(now())
+  lastConfirmedAt DateTime?
+  expiresAt       DateTime?
+
+  /// Set the moment the information is consumed. Once set, it stays set.
+  usedAt        DateTime?
+  /// Which crime consumed it, kept for later balancing.
+  usedOnCrimeId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId, usedAt])
+  @@index([ownerId, districtId, usedAt])
+  @@index([ownerId, discoveredAt])
+  @@index([districtId])
+  @@map("information")
+}
+
+/// Immutable record of one crime attempt. Doubles as the cooldown source of
+/// truth: the newest row per (player, crime) decides when the next try opens.
+model CrimeAttempt {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// Matches a `CrimeId` from shared/src/crimes.ts.
+  crimeId    String
+  /// District the attempt was made in, as resolved from the database.
+  districtId String  @default("sentrum")
+  success    Boolean
+
+  payout       Int @default(0)
+  fine         Int @default(0)
+  xpGained     Int @default(0)
+  heatChange   Int @default(0)
+  healthChange Int @default(0)
+  energySpent  Int @default(0)
+
+  /// Effective success chance at the moment of the roll, x10000. Kept for
+  /// balancing analysis later.
+  chanceBps Int @default(0)
+
+  /// Information consumed by this attempt, if any.
+  informationId    String?
+  /// Percentage points the information contributed, x10.
+  informationBonus Int     @default(0)
+
+  /// When the cooldown for this crime expires.
+  cooldownUntil DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([playerId, crimeId, createdAt])
+  @@index([playerId, createdAt])
+  @@map("crime_attempts")
+}
+
+/// Immutable ledger entry. Every single change to a player's money writes one
+/// of these rows inside the same database transaction as the balance update.
+model Transaction {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// Signed amount. Positive = money in, negative = money out.
+  amount       Int
+  type         TransactionType
+  ledger       Ledger          @default(CASH)
+  /// Machine-readable origin of the change, e.g. "bank.deposit".
+  source       String
+  /// Optional Norwegian description shown to the player.
+  description  String?
+  /// Balance of the affected ledger immediately after this entry.
+  balanceAfter Int
+
+  createdAt DateTime @default(now())
+
+  @@index([playerId, createdAt])
+  @@map("transactions")
+}

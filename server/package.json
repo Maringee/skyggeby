@@ -1,0 +1,52 @@
+{
+  "name": "@skyggeby/server",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
+    "test:db": "tsx tests/concurrency.test.ts",
+    "test:ratelimit": "tsx tests/ratelimit.test.ts",
+    "test": "npm run test:db && npm run test:city && npm run test:information && npm run test:skills && npm run test:assets && npm run test:inventory && npm run test:contacts && npm run test:businesses && npm run test:messages && npm run test:profile && npm run test:vehicles && npm run test:properties && npm run test:deployment && npm run test:ratelimit",
+    "test:city": "tsx tests/city.test.ts",
+    "test:information": "tsx tests/information.test.ts",
+    "test:skills": "tsx tests/skills.test.ts",
+    "test:assets": "tsx tests/assets.test.ts",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "test:inventory": "tsx tests/inventory.test.ts",
+    "test:contacts": "tsx tests/contacts.test.ts",
+    "test:businesses": "tsx tests/businesses.test.ts",
+    "test:messages": "tsx tests/messages.test.ts",
+    "test:profile": "tsx tests/player-profile.test.ts",
+    "test:vehicles": "tsx tests/vehicles.test.ts",
+    "test:properties": "tsx tests/properties.test.ts",
+    "test:deployment": "tsx tests/deployment.test.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.3.1",
+    "@skyggeby/shared": "*",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.8",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.13.1",
+    "prisma": "^6.3.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

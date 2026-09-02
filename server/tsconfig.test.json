@@ -1,0 +1,10 @@
+{
+  // Typechecks the tests alongside the source. The build config keeps `src` as
+  // its rootDir for emit; here nothing is emitted, so the root can widen.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["src", "tests"]
+}

@@ -1,0 +1,39 @@
+{
+  "name": "skyggeby",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SKYGGEBY - et norsk multiplayer crime/economy-spill for nettleser",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"shared,server,client\" -c \"magenta,red,blue\" \"npm:dev:shared\" \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:shared": "npm -w @skyggeby/shared run dev",
+    "dev:server": "npm -w @skyggeby/server run dev",
+    "dev:client": "npm -w @skyggeby/client run dev",
+    "build": "npm -w @skyggeby/shared run build && npm -w @skyggeby/server run build && npm -w @skyggeby/client run build",
+    "build:deploy": "npm -w @skyggeby/server run prisma:generate && npm run build",
+    "start": "npm -w @skyggeby/server run prisma:deploy && node server/dist/index.js",
+    "typecheck": "npm -w @skyggeby/server run typecheck && npm -w @skyggeby/client run typecheck",
+    "setup": "npm install && npm -w @skyggeby/shared run build && npm -w @skyggeby/server run prisma:generate",
+    "db:push": "npm -w @skyggeby/server run prisma:push",
+    "db:migrate": "npm -w @skyggeby/server run prisma:migrate",
+    "db:studio": "npm -w @skyggeby/server run prisma:studio",
+    "test": "npm -w @skyggeby/server run test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "prisma@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
+  }
+}

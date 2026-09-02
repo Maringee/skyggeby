@@ -1,0 +1,16 @@
+node_modules/
+dist/
+client/dist/
+server/dist/
+shared/dist/
+
+# Miljøvariabler: kun .env.example skal committes.
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
+
+# Railway CLI
+.railway/
