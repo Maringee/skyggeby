@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import { env } from '../config/env';
 
 /**
  * Baseline security headers.
@@ -33,7 +34,34 @@ const CONTENT_SECURITY_POLICY = [
   "object-src 'none'",
 ].join('; ');
 
-export function securityHeaders(_req: Request, res: Response, next: NextFunction) {
+/**
+ * One year, subdomains included. No `preload`: that submits the domain to a
+ * list baked into browsers and is effectively irreversible, which is not a
+ * commitment a staging host on a shared `up.railway.app` domain should make.
+ */
+const STRICT_TRANSPORT_SECURITY = 'max-age=31536000; includeSubDomains';
+
+/**
+ * Whether this response travels over HTTPS.
+ *
+ * `req.secure` is the accurate answer: behind Railway's proxy it reads
+ * `X-Forwarded-Proto`, which Express only trusts because `trust proxy` is set
+ * from `TRUST_PROXY`. `cookieSecure` is the belt to that suspenders - it is the
+ * operator saying "this deployment is HTTPS", so a misconfigured hop count
+ * cannot silently drop the header.
+ */
+function isHttps(req: Request): boolean {
+  return req.secure || env.cookieSecure;
+}
+
+export function securityHeaders(req: Request, res: Response, next: NextFunction) {
+  // Only ever sent over HTTPS. Browsers ignore HSTS from a plain-http response
+  // anyway, and emitting it in local development is a good way to pin someone's
+  // localhost to a scheme their dev server does not speak.
+  if (isHttps(req)) {
+    res.setHeader('Strict-Transport-Security', STRICT_TRANSPORT_SECURITY);
+  }
+
   res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');

@@ -9,8 +9,10 @@
  *
  * Run with `npm -w @skyggeby/server run test:deployment`.
  */
+import type { NextFunction, Request, Response } from 'express';
 import { env } from '../src/config/env';
 import { prisma } from '../src/db/prisma';
+import { securityHeaders } from '../src/middleware/security';
 import {
   check,
   cleanup,
@@ -23,6 +25,32 @@ import {
   startServer,
   summary,
 } from './harness';
+
+/**
+ * Runs the security middleware against a stand-in request and collects the
+ * headers it set.
+ *
+ * The HTTPS branch cannot be reached over the plain-http test server, and the
+ * environment is read once at import - so the branch is exercised where it
+ * actually lives rather than by starting a second process with a TLS
+ * certificate.
+ */
+function headersFor(secure: boolean): Record<string, string> {
+  const set: Record<string, string> = {};
+  const res = {
+    setHeader(name: string, value: string) {
+      set[name] = value;
+    },
+  } as unknown as Response;
+
+  let calledNext = false;
+  securityHeaders({ secure } as Request, res, (() => {
+    calledNext = true;
+  }) as NextFunction);
+
+  if (!calledNext) throw new Error('securityHeaders kalte ikke next()');
+  return set;
+}
 
 /** Raw fetch, so headers can be inspected rather than just the body. */
 async function raw(base: string, path: string, cookie?: string) {
@@ -97,6 +125,46 @@ async function main() {
           res.headers.get(header) ?? 'mangler',
         );
       }
+
+      // HSTS belongs on HTTPS only. This suite runs over plain http, so the
+      // header must be absent here - a browser would ignore it anyway, and
+      // emitting it in development risks pinning localhost to a scheme the dev
+      // server does not speak.
+      check(
+        'HSTS sendes ikke over vanlig http',
+        res.headers.get('strict-transport-security') === null,
+        res.headers.get('strict-transport-security') ?? 'mangler',
+      );
+
+      const overHttps = headersFor(true);
+      const hsts = overHttps['Strict-Transport-Security'] ?? '';
+      check('HSTS settes over HTTPS', hsts.length > 0, hsts || 'mangler');
+      check('den varer i ett år', hsts.includes('max-age=31536000'), hsts);
+      check('den dekker underdomener', hsts.includes('includeSubDomains'), hsts);
+      check(
+        'den ber ikke om preload',
+        !hsts.includes('preload'),
+        hsts,
+      );
+
+      const overHttp = headersFor(false);
+      check(
+        'og ingen HSTS uten HTTPS',
+        overHttp['Strict-Transport-Security'] === undefined,
+        overHttp['Strict-Transport-Security'] ?? 'mangler',
+      );
+
+      // The rest of the set must be identical on both sides: HSTS is the only
+      // header that depends on the transport.
+      const withoutHsts = (headers: Record<string, string>) => {
+        const copy = { ...headers };
+        delete copy['Strict-Transport-Security'];
+        return JSON.stringify(copy);
+      };
+      check(
+        'ingen andre headere endret seg av HTTPS',
+        withoutHsts(overHttps) === withoutHsts(overHttp),
+      );
 
       const csp = res.headers.get('content-security-policy') ?? '';
       check('innholdspolicy er satt', csp.length > 0);
