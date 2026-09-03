@@ -60,6 +60,12 @@ export function CrimeCard({
   const available = block.reason === null;
   const chancePct = Math.round(crime.successChance * 100);
 
+  // The list already arrives adjusted for the district and the player's heat.
+  // Showing the gap against the catalogue's base makes that visible, so moving
+  // around the city reads as a decision rather than as scenery.
+  const basePct = Math.round(crime.baseSuccessChance * 100);
+  const chanceDelta = chancePct - basePct;
+
   return (
     <article
       className={`panel group relative animate-fade-up overflow-hidden p-5 transition
@@ -93,7 +99,19 @@ export function CrimeCard({
             <p className={`font-mono text-sm font-semibold ${riskTone(crime.successChance)}`}>
               {chancePct} %
             </p>
-            <p className="text-[0.68rem] text-steel-500">{crime.riskLabel}</p>
+            {chanceDelta !== 0 ? (
+              <p
+                className={`font-mono text-[0.68rem] ${
+                  chanceDelta > 0 ? 'text-neon' : 'text-blood-400'
+                }`}
+                title={`Grunnsjanse ${basePct} %, justert for strøk og heat`}
+              >
+                {chanceDelta > 0 ? '+' : '−'}
+                {Math.abs(chanceDelta)} pp
+              </p>
+            ) : (
+              <p className="text-[0.68rem] text-steel-500">{crime.riskLabel}</p>
+            )}
           </div>
         </div>
 

@@ -106,6 +106,27 @@ export function canContactStatus(status: ContactStatus): boolean {
 }
 
 /* ------------------------------------------------------------------ *
+ * Activity cost
+ * ------------------------------------------------------------------ */
+
+/**
+ * What talking to people costs and gives.
+ *
+ * v1 made both actions free, which sounds generous but made them weightless:
+ * with nothing to spend, meeting all eighteen people was a clicking exercise
+ * rather than a decision. Putting them on the same energy budget as crime is
+ * what turns "who do I spend my evening on" into a real question, and the
+ * experience is what makes the network a route through the early levels rather
+ * than a detour from them.
+ */
+export const CONTACT_ACTIVITY = {
+  discoverEnergyCost: 2,
+  discoverXp: 5,
+  interactEnergyCost: 1,
+  interactXp: 2,
+} as const;
+
+/* ------------------------------------------------------------------ *
  * People
  * ------------------------------------------------------------------ */
 

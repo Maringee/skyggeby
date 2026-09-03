@@ -4,6 +4,8 @@
  * The client only renders them - the server is the single source of truth.
  */
 
+import { maxEnergyForLevel } from './vitals';
+
 export const GAME_NAME = 'SKYGGEBY';
 export const GAME_TAGLINE = 'Byen sover aldri.';
 
@@ -16,8 +18,8 @@ export const STARTING_STATS = {
   heat: 0,
   level: 1,
   xp: 0,
-  energy: 100,
-  maxEnergy: 100,
+  energy: maxEnergyForLevel(1),
+  maxEnergy: maxEnergyForLevel(1),
   /** Every new player starts in Sentrum. See shared/src/districts.ts. */
   currentDistrictId: 'sentrum',
 } as const;

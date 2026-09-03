@@ -175,8 +175,10 @@ export const INFORMATION_TUNING = {
 
   /** Energy an exploration costs. */
   exploreEnergyCost: 3,
+  /** Experience for going out and looking, found something or not. */
+  exploreXp: 6,
   /** Seconds before the player may explore again. */
-  exploreCooldownSeconds: 300,
+  exploreCooldownSeconds: 120,
   /** Base chance of finding anything at all, before district activity. */
   exploreBaseChance: 0.55,
   /** How much each step of district activity above average helps. */

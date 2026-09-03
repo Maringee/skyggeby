@@ -21,6 +21,11 @@ export interface ExploreResult {
   found: Information | null;
   message: string;
   energySpent: number;
+  /** Experience for going out and looking, whether or not it paid off. */
+  xpGained: number;
+  leveledUp: boolean;
+  newLevel: number;
+  skillPointsGained: number;
   cooldownUntil: Date;
 }
 

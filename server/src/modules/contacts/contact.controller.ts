@@ -5,7 +5,7 @@ import type {
   ContactInteractResponse,
   ContactListResponse,
 } from '@skyggeby/shared';
-import { toContactDto } from '../../lib/serialize';
+import { toContactDto, toPlayerDto } from '../../lib/serialize';
 import {
   contactActionSchema,
   contactIdParamSchema,
@@ -50,6 +50,11 @@ export async function postDiscover(req: Request, res: Response) {
     found: result.relationship !== null,
     message: result.message,
     contacts: rows.map(toContactDto),
+    energySpent: result.energySpent,
+    xpGained: result.xpGained,
+    leveledUp: result.leveledUp,
+    skillPointsGained: result.skillPointsGained,
+    player: toPlayerDto(result.player),
   };
   res.status(200).json(body);
 }
@@ -65,6 +70,11 @@ export async function postInteract(req: Request, res: Response) {
     contacts: rows.map(toContactDto),
     trustGained: result.trustGained,
     message: result.message,
+    energySpent: result.energySpent,
+    xpGained: result.xpGained,
+    leveledUp: result.leveledUp,
+    skillPointsGained: result.skillPointsGained,
+    player: toPlayerDto(result.player),
   };
   res.status(200).json(body);
 }

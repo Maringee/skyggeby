@@ -4,6 +4,9 @@ client/dist/
 server/dist/
 shared/dist/
 
+# Byggeartefakt fra tsc --build. Endrer seg ved hver bygging.
+client/tsconfig.tsbuildinfo
+
 # Miljøvariabler: kun .env.example skal committes.
 .env
 .env.*

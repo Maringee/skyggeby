@@ -147,6 +147,16 @@ async function main() {
 
       const after = await reload(t.player.id);
       check('nøyaktig 3 energi trukket', after.energy === 97, `energi=${after.energy}`);
+      check(
+        'å lete gir erfaring',
+        after.xp === INFORMATION_TUNING.exploreXp,
+        `xp=${after.xp}`,
+      );
+      check(
+        'svaret oppgir erfaringen',
+        res.body?.xpGained === INFORMATION_TUNING.exploreXp,
+        `${res.body?.xpGained}`,
+      );
       check('kostnaden er den sentrale konstanten', INFORMATION_TUNING.exploreEnergyCost === 3);
 
       const broke = await createTestPlayer({ energy: 2 });
@@ -190,7 +200,7 @@ async function main() {
 
       const after = await reload(t.player.id);
       check('blokkert forsøk koster ikke energi', after.energy === 97, `energi=${after.energy}`);
-      check('avkjølingen varer 5 minutter', INFORMATION_TUNING.exploreCooldownSeconds === 300);
+      check('avkjølingen varer to minutter', INFORMATION_TUNING.exploreCooldownSeconds === 120);
     }
 
     /* ================================================================== */

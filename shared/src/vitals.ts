@@ -6,13 +6,46 @@
  */
 
 export const VITALS = {
-  /** Energy a fresh player starts with, and their ceiling. */
+  /** Absolute ceiling. Nobody's cap ever goes past this. */
   maxEnergy: 100,
+  /** Energy cap at level 1. */
+  baseMaxEnergy: 40,
+  /** Extra cap per level, until the absolute ceiling is reached at level 10. */
+  maxEnergyPerLevel: 6,
   /** Seconds of real time per single point of energy regained. */
   secondsPerEnergy: 20,
   /** Seconds of real time per single point of heat that cools off. */
   secondsPerHeatDecay: 240,
 } as const;
+
+/**
+ * How much energy a player of this level may hold.
+ *
+ * Early game used to hand everyone 100, which meant energy never bound: a
+ * 45-second cooldown regenerates more energy than the crime behind it costs, so
+ * the player got richer in energy by waiting. A cap that starts at 46 and grows
+ * with level makes energy the thing that forces a choice between activities,
+ * and makes levelling grant *room to act* rather than only bigger numbers.
+ *
+ * Level 1 = 46, level 10 = 100 and flat from there.
+ */
+export function maxEnergyForLevel(level: number): number {
+  const safeLevel = Math.max(1, Math.floor(level));
+  return Math.min(
+    VITALS.maxEnergy,
+    VITALS.baseMaxEnergy + VITALS.maxEnergyPerLevel * safeLevel,
+  );
+}
+
+/**
+ * The cap a player should have after reaching a level.
+ *
+ * Never lowers an existing cap: players who already hold 100 keep it. A balance
+ * change must not take something away from someone who already had it.
+ */
+export function raisedMaxEnergy(currentMax: number, level: number): number {
+  return Math.max(currentMax, maxEnergyForLevel(level));
+}
 
 export interface RegenInput {
   energy: number;

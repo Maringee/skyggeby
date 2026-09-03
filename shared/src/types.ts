@@ -320,6 +320,11 @@ export interface ContactDiscoverResponse {
   /** Norwegian description of what happened. */
   message: string;
   contacts: ContactDto[];
+  energySpent: number;
+  xpGained: number;
+  leveledUp: boolean;
+  skillPointsGained: number;
+  player: PlayerDto;
 }
 
 export interface ContactInteractResponse {
@@ -328,6 +333,11 @@ export interface ContactInteractResponse {
   /** Trust gained by this interaction. */
   trustGained: number;
   message: string;
+  energySpent: number;
+  xpGained: number;
+  leveledUp: boolean;
+  skillPointsGained: number;
+  player: PlayerDto;
 }
 
 export interface ContactPayload {
@@ -965,6 +975,10 @@ export interface ExploreResponse {
   /** Norwegian description of what happened. */
   message: string;
   energySpent: number;
+  /** Experience for the round, paid whether or not anything was found. */
+  xpGained: number;
+  leveledUp: boolean;
+  skillPointsGained: number;
   exploreCooldownSeconds: number;
   player: PlayerDto;
   information: InformationDto[];

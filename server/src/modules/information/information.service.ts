@@ -11,7 +11,7 @@ import { prisma } from '../../db/prisma';
 import { AppError, notFound } from '../../lib/errors';
 import { randomChance } from '../../lib/random';
 import { lockPlayer } from '../economy/transaction.service';
-import { settleVitalsTx } from '../player/progression.service';
+import { grantXp, maxEnergyAfter, settleVitalsTx } from '../player/progression.service';
 import { getSkillEffects } from '../skills/skill.effects';
 import { getSkillLevelsTx } from '../skills/skill.service';
 import { discoveryChance, generateDiscovery } from './information.generator';
@@ -70,6 +70,10 @@ export async function exploreCurrentDistrict(playerId: string): Promise<ExploreR
       now.getTime() + INFORMATION_TUNING.exploreCooldownSeconds * 1000,
     );
 
+    // Looking around is work, so it pays experience whether or not the round
+    // turns anything up. Early game needs routes forward that are not crime.
+    const progression = grantXp(player.xp, player.level, INFORMATION_TUNING.exploreXp);
+
     await tx.player.update({
       where: { id: playerId },
       data: {
@@ -77,6 +81,11 @@ export async function exploreCurrentDistrict(playerId: string): Promise<ExploreR
         // Spending energy restarts the regeneration clock from a known point.
         energyUpdatedAt: player.energy >= player.maxEnergy ? now : player.energyUpdatedAt,
         lastExploredAt: now,
+        xp: progression.xp,
+        level: progression.level,
+        // Granted by the same write as the level, so the two cannot drift.
+        skillPoints: { increment: progression.skillPointsGained },
+        maxEnergy: maxEnergyAfter(player.maxEnergy, progression.level),
       },
     });
 
@@ -89,6 +98,10 @@ export async function exploreCurrentDistrict(playerId: string): Promise<ExploreR
         found: null,
         message: `Du gikk runden i ${district.name}, men kom tilbake med ingenting.`,
         energySpent: INFORMATION_TUNING.exploreEnergyCost,
+        xpGained: INFORMATION_TUNING.exploreXp,
+        leveledUp: progression.leveledUp,
+        newLevel: progression.level,
+        skillPointsGained: progression.skillPointsGained,
         cooldownUntil,
       } satisfies ExploreResult;
     }
@@ -116,6 +129,10 @@ export async function exploreCurrentDistrict(playerId: string): Promise<ExploreR
       found: information,
       message: `Du fant noe i ${district.name}.`,
       energySpent: INFORMATION_TUNING.exploreEnergyCost,
+      xpGained: INFORMATION_TUNING.exploreXp,
+      leveledUp: progression.leveledUp,
+      newLevel: progression.level,
+      skillPointsGained: progression.skillPointsGained,
       cooldownUntil,
     } satisfies ExploreResult;
   });

@@ -2,6 +2,7 @@ import type { Player, Prisma } from '@prisma/client';
 import {
   LIMITS,
   levelFromXp,
+  raisedMaxEnergy,
   regenerateVitals,
   skillPointsForLevelUp,
 } from '@skyggeby/shared';
@@ -98,6 +99,17 @@ export interface XpGrant {
    * the new level, so the two can never drift apart or be applied twice.
    */
   skillPointsGained: number;
+}
+
+/**
+ * The energy cap that goes with a level.
+ *
+ * Written by the same update as the level itself, for the same reason skill
+ * points are: two writes could drift, one cannot. It never lowers an existing
+ * cap, so the change costs nobody anything they already had.
+ */
+export function maxEnergyAfter(currentMax: number, level: number): number {
+  return raisedMaxEnergy(currentMax, level);
 }
 
 /**

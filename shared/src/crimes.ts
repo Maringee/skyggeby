@@ -82,7 +82,7 @@ export const CRIMES: readonly CrimeDefinition[] = [
     scene: 'Holdeplassen',
     minLevel: 1,
     energyCost: 2,
-    cooldownSeconds: 45,
+    cooldownSeconds: 30,
     successChance: 0.85,
     reward: { min: 60, max: 180 },
     xp: { min: 8, max: 14 },
@@ -108,7 +108,7 @@ export const CRIMES: readonly CrimeDefinition[] = [
     description:
       'Kiosken på hjørnet har ett kamera og null vakthold. Du vet nøyaktig hvor de dyre tingene står.',
     scene: 'Nedre gate',
-    minLevel: 3,
+    minLevel: 2,
     energyCost: 4,
     cooldownSeconds: 150,
     successChance: 0.72,
@@ -136,7 +136,7 @@ export const CRIMES: readonly CrimeDefinition[] = [
     description:
       'En leilighet i tredje etasje har stått mørk i fire dager. Postkassa er full, og balkongdøra er gammel.',
     scene: 'Bakgårdene',
-    minLevel: 7,
+    minLevel: 5,
     energyCost: 7,
     cooldownSeconds: 420,
     successChance: 0.58,
@@ -164,7 +164,7 @@ export const CRIMES: readonly CrimeDefinition[] = [
     description:
       'Parkeringshuset ved havna har en tysk stasjonsvogn på plan fire. Kameraene peker feil vei.',
     scene: 'Havnelageret',
-    minLevel: 12,
+    minLevel: 8,
     energyCost: 10,
     cooldownSeconds: 900,
     successChance: 0.47,
@@ -192,7 +192,7 @@ export const CRIMES: readonly CrimeDefinition[] = [
     description:
       'Et lager på industrifeltet tar imot paller om natta. Vaktbua er bemannet av én mann og en termos.',
     scene: 'Industrifeltet',
-    minLevel: 18,
+    minLevel: 12,
     energyCost: 14,
     cooldownSeconds: 1800,
     successChance: 0.38,

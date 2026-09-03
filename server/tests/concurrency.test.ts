@@ -4,7 +4,14 @@
  * Focus: row locking and transaction isolation under genuine concurrency.
  * Run with `npm -w @skyggeby/server run test:db`.
  */
-import { LIMITS, levelFromXp } from '@skyggeby/shared';
+import {
+  LIMITS,
+  STARTING_STATS,
+  levelFromXp,
+  maxEnergyForLevel,
+  raisedMaxEnergy,
+  xpRequiredForLevel,
+} from '@skyggeby/shared';
 import { prisma } from '../src/db/prisma';
 import { deposit, withdraw } from '../src/modules/economy/bank.service';
 import { performCrime } from '../src/modules/crime/crime.service';
@@ -465,6 +472,51 @@ async function main() {
         after.level === levelFromXp(after.xp),
         `nivå=${after.level} forventet=${levelFromXp(after.xp)}`,
       );
+    }
+
+    section('4e. Energitaket følger nivået');
+
+    {
+      // The cap is what makes energy bind in early game: with a flat 100 a
+      // 30-second cooldown regenerates more than the crime behind it costs, so
+      // the player got richer in energy by waiting and never had to choose.
+      check('nivå 1 får 46', maxEnergyForLevel(1) === 46, `${maxEnergyForLevel(1)}`);
+      check('nivå 2 får 52', maxEnergyForLevel(2) === 52, `${maxEnergyForLevel(2)}`);
+      check('nivå 10 når taket', maxEnergyForLevel(10) === 100, `${maxEnergyForLevel(10)}`);
+      check('taket brytes aldri', maxEnergyForLevel(50) === 100, `${maxEnergyForLevel(50)}`);
+      check('ugyldig nivå faller til nivå 1', maxEnergyForLevel(0) === 46);
+
+      // A balance change must not take away what somebody already had.
+      check('et eksisterende tak senkes aldri', raisedMaxEnergy(100, 1) === 100);
+      check('men det heves når nivået tilsier det', raisedMaxEnergy(46, 3) === 58);
+
+      check(
+        'nye spillere starter på nivå 1-taket',
+        STARTING_STATS.maxEnergy === maxEnergyForLevel(1) &&
+          STARTING_STATS.energy === maxEnergyForLevel(1),
+        `${STARTING_STATS.energy}/${STARTING_STATS.maxEnergy}`,
+      );
+
+      // One XP short of level 2, with the cap a fresh player would have.
+      const t = await createTestPlayer({
+        level: 1,
+        xp: xpRequiredForLevel(2) - 1,
+        energy: 46,
+        maxEnergy: 46,
+        health: 100,
+      });
+
+      const before = await reload(t.player.id);
+      check('starter på 46', before.maxEnergy === 46, `${before.maxEnergy}`);
+
+      await performCrime(t.player.id, 'lommetyveri');
+
+      const after = await reload(t.player.id);
+      check('nivåsprang skjedde', after.level === 2, `nivå ${after.level}`);
+      check('taket ble hevet i samme skriving', after.maxEnergy === 52, `${after.maxEnergy}`);
+      check('ferdighetspoeng kom også', after.skillPoints === 2, `${after.skillPoints}`);
+      check('energien er aldri over taket', after.energy <= after.maxEnergy,
+        `${after.energy}/${after.maxEnergy}`);
     }
 
     section('5. Konsistens etter alt presset');

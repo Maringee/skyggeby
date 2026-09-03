@@ -1,6 +1,7 @@
-import type { ContactRelationship } from '@prisma/client';
+import type { ContactRelationship, Player } from '@prisma/client';
 import {
   CONTACTS,
+  CONTACT_ACTIVITY,
   CONTACT_STATUS_BLOCK_REASONS,
   TRUST_TUNING,
   adjustTrust,
@@ -15,14 +16,28 @@ import { prisma } from '../../db/prisma';
 import { AppError, notFound } from '../../lib/errors';
 import { pickOne } from '../../lib/random';
 import { lockPlayer } from '../economy/transaction.service';
+import {
+  grantXp,
+  maxEnergyAfter,
+  settleVitalsTx,
+} from '../player/progression.service';
 
-export interface DiscoverResult {
+/** What an action against the network cost and paid. */
+export interface ContactProgress {
+  player: Player;
+  energySpent: number;
+  xpGained: number;
+  leveledUp: boolean;
+  skillPointsGained: number;
+}
+
+export interface DiscoverResult extends ContactProgress {
   /** Null when nobody new turned up. */
   relationship: ContactRelationship | null;
   message: string;
 }
 
-export interface InteractResult {
+export interface InteractResult extends ContactProgress {
   relationship: ContactRelationship;
   trustGained: number;
   message: string;
@@ -56,19 +71,74 @@ export async function getRelationship(
 }
 
 /**
+ * Charges energy for an action against the network and pays the experience.
+ *
+ * Both of the network's verbs cost the same budget crime does. That is the
+ * point: with nothing to spend, meeting people was a clicking exercise rather
+ * than a decision about how to spend an evening. The write goes out in one
+ * update alongside the level and the skill points, so nothing can drift.
+ */
+async function chargeAndReward(
+  tx: Parameters<typeof settleVitalsTx>[0],
+  player: Player,
+  energyCost: number,
+  xp: number,
+  actionName: string,
+  now: Date,
+): Promise<ContactProgress> {
+  if (player.energy < energyCost) {
+    throw new AppError(
+      400,
+      'FOR_LITE_ENERGI',
+      `Du har ikke nok energi. ${actionName} koster ${energyCost}, du har ${player.energy}.`,
+    );
+  }
+
+  const progression = grantXp(player.xp, player.level, xp);
+
+  const updated = await tx.player.update({
+    where: { id: player.id },
+    data: {
+      energy: Math.max(0, player.energy - energyCost),
+      // Spending energy restarts the regeneration clock from a known point.
+      energyUpdatedAt: player.energy >= player.maxEnergy ? now : player.energyUpdatedAt,
+      xp: progression.xp,
+      level: progression.level,
+      skillPoints: { increment: progression.skillPointsGained },
+      maxEnergy: maxEnergyAfter(player.maxEnergy, progression.level),
+    },
+  });
+
+  return {
+    player: updated,
+    energySpent: energyCost,
+    xpGained: xp,
+    leveledUp: progression.leveledUp,
+    skillPointsGained: progression.skillPointsGained,
+  };
+}
+
+/**
  * Meets someone new.
  *
  * The player's own district is read from their locked row and preferred, but
  * the search widens to the rest of the city rather than dead-ending. The
  * unique constraint on (playerId, contactId) is the real guarantee: even if two
  * requests somehow chose the same person, only one row can exist.
+ *
+ * Energy is charged only when somebody actually turns up - a wasted evening is
+ * the game's to give, not something to bill the player for.
  */
 export async function discoverContact(playerId: string): Promise<DiscoverResult> {
   return prisma.$transaction(async (tx) => {
+    const now = new Date();
     await lockPlayer(tx, playerId);
 
-    const player = await tx.player.findUnique({ where: { id: playerId } });
-    if (!player) throw notFound('Fant ikke spilleren.');
+    const loaded = await tx.player.findUnique({ where: { id: playerId } });
+    if (!loaded) throw notFound('Fant ikke spilleren.');
+
+    const settled = await settleVitalsTx(tx, loaded, now);
+    let player = settled.player;
 
     const known = await tx.contactRelationship.findMany({
       where: { playerId },
@@ -90,8 +160,23 @@ export async function discoverContact(playerId: string): Promise<DiscoverResult>
       return {
         relationship: null,
         message: 'Du fant ingen nye kontakter denne gangen.',
+        player,
+        energySpent: 0,
+        xpGained: 0,
+        leveledUp: false,
+        skillPointsGained: 0,
       };
     }
+
+    const progress = await chargeAndReward(
+      tx,
+      player,
+      CONTACT_ACTIVITY.discoverEnergyCost,
+      CONTACT_ACTIVITY.discoverXp,
+      'Å lete etter folk',
+      now,
+    );
+    player = progress.player;
 
     const chosen = pickOne(pool, pool[0]!) as ContactDefinition;
 
@@ -111,6 +196,7 @@ export async function discoverContact(playerId: string): Promise<DiscoverResult>
         local.length > 0
           ? `Du ble kjent med ${chosen.name} i ${home.name}.`
           : `Du ble tipset om ${chosen.name} i ${home.name}.`,
+      ...progress,
     };
   });
 }
@@ -132,7 +218,13 @@ export async function interactWithContact(
   }
 
   return prisma.$transaction(async (tx) => {
+    const now = new Date();
     await lockPlayer(tx, playerId);
+
+    const loaded = await tx.player.findUnique({ where: { id: playerId } });
+    if (!loaded) throw notFound('Fant ikke spilleren.');
+
+    const settled = await settleVitalsTx(tx, loaded, now);
 
     const relationship = await tx.contactRelationship.findFirst({
       where: { playerId, contactId },
@@ -152,6 +244,15 @@ export async function interactWithContact(
       );
     }
 
+    const progress = await chargeAndReward(
+      tx,
+      settled.player,
+      CONTACT_ACTIVITY.interactEnergyCost,
+      CONTACT_ACTIVITY.interactXp,
+      'Å ta en prat',
+      now,
+    );
+
     const nextTrust = adjustTrust(relationship.trust, TRUST_TUNING.perInteraction);
     const trustGained = nextTrust - relationship.trust;
 
@@ -167,6 +268,7 @@ export async function interactWithContact(
         trustGained > 0
           ? `Du tok en prat med ${definition.name}.`
           : `Du tok en prat med ${definition.name}. Dere står allerede så nær som dere kan.`,
+      ...progress,
     };
   });
 }

@@ -5,6 +5,7 @@ import { api } from '@/api/endpoints';
 import { useNow } from '@/lib/useNow';
 import { Alert } from './Alert';
 import { CrimeCard } from './CrimeCard';
+import { DistrictEffect } from './DistrictEffect';
 import { CrimeOutcomeBanner } from './CrimeOutcomeBanner';
 import { IconTarget } from './Icons';
 
@@ -86,6 +87,10 @@ export function CrimePanel({ player, onOutcome }: CrimePanelProps) {
         <p className="label-xs">
           {unlockedCount} av {crimes.length} åpne
         </p>
+      </div>
+
+      <div className="mt-5">
+        <DistrictEffect districtId={player.currentDistrictId} />
       </div>
 
       {outcome && (

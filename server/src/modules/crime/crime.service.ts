@@ -20,7 +20,7 @@ import {
   lockPlayer,
   type LedgerEntry,
 } from '../economy/transaction.service';
-import { grantXp, settleVitalsTx } from '../player/progression.service';
+import { grantXp, maxEnergyAfter, settleVitalsTx } from '../player/progression.service';
 import {
   applyInformation,
   claimInformation,
@@ -356,6 +356,7 @@ export async function performCrime(
         level: progression.level,
         // Granted by the same write as the level, so the two cannot drift.
         skillPoints: { increment: progression.skillPointsGained },
+        maxEnergy: maxEnergyAfter(player.maxEnergy, progression.level),
       },
     });
 

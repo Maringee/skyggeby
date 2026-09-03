@@ -6,6 +6,7 @@
  */
 import {
   CONTACTS,
+  CONTACT_ACTIVITY,
   CONTACT_IDS,
   CONTACT_TYPES,
   DISTRICT_IDS,
@@ -136,12 +137,24 @@ async function main() {
       check('svaret oppgir distriktet', res.body?.contact?.districtName === 'Havna');
       check('svaret oppgir rollen', typeof res.body?.contact?.role === 'string');
 
-      // Discovery costs nothing.
+      // Discovery costs energy and pays experience: the network is an early
+      // route forward, and it competes for the same budget crime does.
       const after = await reload(t.player.id);
       check('koster ikke penger', after.cash === t.player.cash, `${after.cash}`);
-      check('koster ikke energi', after.energy === t.player.energy, `${after.energy}`);
-      check('påvirker ikke XP', after.xp === t.player.xp);
-      check('påvirker ikke ferdighetspoeng', after.skillPoints === t.player.skillPoints);
+      check(
+        'koster energi',
+        after.energy === t.player.energy - CONTACT_ACTIVITY.discoverEnergyCost,
+        `${after.energy}`,
+      );
+      check(
+        'gir erfaring',
+        after.xp === t.player.xp + CONTACT_ACTIVITY.discoverXp,
+        `${after.xp}`,
+      );
+      check('svaret oppgir kostnaden', res.body?.energySpent === CONTACT_ACTIVITY.discoverEnergyCost,
+        `${res.body?.energySpent}`);
+      check('svaret oppgir erfaringen', res.body?.xpGained === CONTACT_ACTIVITY.discoverXp,
+        `${res.body?.xpGained}`);
 
       // Keep going until Havna is exhausted, then it widens.
       const havnaCount = contactsInDistrict('havna').length;
@@ -215,6 +228,23 @@ async function main() {
       check('tilliten økte med 1', res.body?.contact?.trust === 43,
         String(res.body?.contact?.trust));
       check('svaret oppgir økningen', res.body?.trustGained === 1);
+
+      // Talking is cheap, but not free: it competes with crime for the same
+      // energy, which is what makes "who do I spend the evening on" a question.
+      const spent = await reload(t.player.id);
+      check(
+        'praten kostet energi',
+        spent.energy === t.player.energy - CONTACT_ACTIVITY.interactEnergyCost,
+        `${spent.energy}`,
+      );
+      check(
+        'praten ga erfaring',
+        spent.xp === t.player.xp + CONTACT_ACTIVITY.interactXp,
+        `${spent.xp}`,
+      );
+      check('svaret oppgir kostnaden',
+        res.body?.energySpent === CONTACT_ACTIVITY.interactEnergyCost,
+        `${res.body?.energySpent}`);
       check('meldingen er norsk', /Du tok en prat med Marius/.test(res.body?.message ?? ''),
         res.body?.message);
       check('etiketten er riktig', res.body?.contact?.trustLabel === 'Kontakt',
