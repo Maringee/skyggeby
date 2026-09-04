@@ -6,6 +6,7 @@ export * from './crimes';
 export * from './districts';
 export * from './game';
 export * from './information';
+export * from './missions';
 export * from './properties';
 export * from './skills';
 export * from './types';

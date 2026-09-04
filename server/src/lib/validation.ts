@@ -8,6 +8,7 @@ import {
   PLAYER_SEARCH,
   MESSAGE_BOXES,
   MESSAGE_LIMITS,
+  MISSION_IDS,
   BUSINESS_TUNING,
   BUSINESS_TYPE_IDS,
   CONTACT_IDS,
@@ -436,6 +437,24 @@ export const propertyIdParamSchema = z.object({
     .trim()
     .min(1, 'Du må oppgi hvilken eiendom du mener.')
     .max(64, 'Ugyldig eiendoms-id.'),
+});
+
+/**
+ * Route parameter for a single mission.
+ *
+ * Checked against the catalogue here rather than in the service, so an id that
+ * does not exist never reaches game code. Nothing else is read from the
+ * request: a mission carries no client-supplied numbers at all - the reward,
+ * the requirements and the objectives are all read from the server's own
+ * catalogue.
+ */
+export const missionIdParamSchema = z.object({
+  missionId: z
+    .string({ required_error: 'Du må oppgi hvilket oppdrag du mener.' })
+    .trim()
+    .min(1, 'Du må oppgi hvilket oppdrag du mener.')
+    .max(64, 'Ugyldig oppdrags-id.')
+    .refine((value) => MISSION_IDS.includes(value), { message: 'Ukjent oppdrag.' }),
 });
 
 /** Route parameter for a single piece of information. */

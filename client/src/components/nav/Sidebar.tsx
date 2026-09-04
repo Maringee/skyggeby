@@ -5,6 +5,7 @@ import { Brand } from '@/components/Brand';
 import { IconClose, IconLogout } from '@/components/Icons';
 import { NAV_ENTRIES, findNavEntry, type NavEntry } from '@/nav/navigation';
 import { useMessages } from '@/state/MessagesContext';
+import { useMissions } from '@/state/MissionsContext';
 
 interface SidebarProps {
   player: PlayerDto;
@@ -31,6 +32,9 @@ export function Sidebar({
   const activeEntry = findNavEntry(location.pathname);
   // Server-reported, never counted in the browser.
   const { unread } = useMessages();
+  // Counts what can be handed in, not what is active: a badge that never
+  // changes is decoration.
+  const { deliverable } = useMissions();
   const isSection = (entry: NavEntry) => activeEntry?.to === entry.to;
 
   return (
@@ -99,6 +103,16 @@ export function Sidebar({
                     >
                       <span className="h-1.5 w-1.5 rounded-full bg-white" aria-hidden="true" />
                       {unread}
+                    </span>
+                  )}
+                  {entry.to === '/oppdrag' && deliverable > 0 && (
+                    <span
+                      className="flex shrink-0 items-center gap-1.5 rounded-full bg-neon/20 px-2 py-0.5
+                        font-mono text-[0.62rem] font-semibold text-neon"
+                      aria-label={`${deliverable} oppdrag klare til levering`}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-neon" aria-hidden="true" />
+                      {deliverable}
                     </span>
                   )}
                   {entry.upcoming && (

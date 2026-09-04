@@ -11,6 +11,7 @@ import { prisma } from '../../db/prisma';
 import { AppError, notFound } from '../../lib/errors';
 import { randomChance } from '../../lib/random';
 import { lockPlayer } from '../economy/transaction.service';
+import { advanceMissionProgressTx } from '../missions/mission.progress';
 import { grantXp, maxEnergyAfter, settleVitalsTx } from '../player/progression.service';
 import { getSkillEffects } from '../skills/skill.effects';
 import { getSkillLevelsTx } from '../skills/skill.service';
@@ -93,7 +94,18 @@ export async function exploreCurrentDistrict(playerId: string): Promise<ExploreR
       randomChance() <
       discoveryChance(district, skillEffects.informationDiscoveryChance);
 
+    // A round that turns up nothing is still a round walked, so it counts
+    // towards a mission that asked for the walking. What was found - if
+    // anything - decides whether a mission that asked for a *kind* of
+    // knowledge is satisfied.
     if (!found) {
+      await advanceMissionProgressTx(
+        tx,
+        playerId,
+        { kind: 'UTFORSK', districtId: district.id, relevance: null },
+        now,
+      );
+
       return {
         found: null,
         message: `Du gikk runden i ${district.name}, men kom tilbake med ingenting.`,
@@ -124,6 +136,17 @@ export async function exploreCurrentDistrict(playerId: string): Promise<ExploreR
         expiresAt: draft.expiresAt,
       },
     });
+
+    await advanceMissionProgressTx(
+      tx,
+      playerId,
+      {
+        kind: 'UTFORSK',
+        districtId: district.id,
+        relevance: information.relevance as InformationRelevance,
+      },
+      now,
+    );
 
     return {
       found: information,

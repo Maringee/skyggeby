@@ -14,6 +14,7 @@ export const TRANSACTION_TYPES = [
   'VIRKSOMHET_UTTAK',
   'EIENDOM_KJOP',
   'EIENDOM_SALG',
+  'OPPDRAG',
   'KORREKSJON',
 ] as const;
 
@@ -39,6 +40,7 @@ export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   VIRKSOMHET_UTTAK: 'Uttak fra virksomhet',
   EIENDOM_KJOP: 'Eiendom kjøpt',
   EIENDOM_SALG: 'Eiendom solgt',
+  OPPDRAG: 'Oppdrag',
   KORREKSJON: 'Korreksjon',
 };
 
@@ -1082,4 +1084,143 @@ export interface CrimeActionResponse {
   transactions: TransactionDto[];
   crimes: CrimeStateDto[];
   district: CrimeListResponseMeta;
+}
+
+/* ------------------------------------------------------------------ *
+ * Missions
+ * ------------------------------------------------------------------ */
+
+/** One objective, with what the player has against what is asked. */
+export interface MissionObjectiveDto {
+  kind: string;
+  /** What is asked, in Norwegian. */
+  label: string;
+  /** What the player actually has. */
+  actual: string;
+  met: boolean;
+  current: number;
+  target: number;
+}
+
+/** One entry condition. Same shape, different question. */
+export interface MissionConditionDto {
+  met: boolean;
+  label: string;
+  actual: string;
+}
+
+export interface MissionRewardDto {
+  cash: number;
+  xp: number;
+  trust: number;
+  /** Negative removes heat. */
+  heatChange: number;
+  /** Whether a guaranteed piece of knowledge comes with it. */
+  information: boolean;
+  /** Names of what finishing opens up. */
+  unlocksMissions: string[];
+  unlocksContacts: string[];
+}
+
+export interface MissionDto {
+  id: string;
+  name: string;
+  category: string;
+  categoryLabel: string;
+  /** Who offers it. */
+  contactId: string;
+  contactName: string;
+  contactTypeLabel: string;
+  districtId: string;
+  districtName: string;
+  minLevel: number;
+  /** What the contact says when offering it. */
+  briefing: string;
+  /**
+   * What they say afterwards. Only present once the mission is finished - it is
+   * the payoff line, and reading it in advance would spend it.
+   */
+  debriefing: string | null;
+  availability: string;
+  availabilityLabel: string;
+  conditions: MissionConditionDto[];
+  objectives: MissionObjectiveDto[];
+  rewards: MissionRewardDto;
+  /**
+   * True when the reward is withheld because the player is not trusted enough
+   * yet. The numbers in `rewards` are zeroed in that case.
+   */
+  rewardsHidden: boolean;
+  /** Whether it can be handed in right now. */
+  deliverable: boolean;
+  blockedReason: string | null;
+  /** Seconds until it opens again, or until an active deadline passes. */
+  blockedSeconds: number;
+  repeatable: boolean;
+  /** Names of the missions that must be finished first. */
+  requiresMissions: string[];
+  acceptedAt: string | null;
+  expiresAt: string | null;
+  completedAt: string | null;
+  progressCount: number;
+}
+
+export interface MissionListResponse {
+  missions: MissionDto[];
+  player: PlayerDto;
+  activeCount: number;
+  maxActive: number;
+  /** How many can be handed in now. Drives the badge in the menu. */
+  deliverableCount: number;
+  /** Chain links still hidden behind unfinished work. */
+  chainContinues: number;
+}
+
+export interface MissionDetailResponse {
+  mission: MissionDto;
+  player: PlayerDto;
+}
+
+export interface MissionAcceptResponse {
+  mission: MissionDto;
+  missions: MissionDto[];
+  player: PlayerDto;
+  activeCount: number;
+  maxActive: number;
+  deliverableCount: number;
+  message: string;
+}
+
+export interface MissionDeliverResponse {
+  mission: MissionDto;
+  missions: MissionDto[];
+  player: PlayerDto;
+  transactions: TransactionDto[];
+  cash: number;
+  xpGained: number;
+  trustGained: number;
+  heatChange: number;
+  leveledUp: boolean;
+  newLevel: number;
+  skillPointsGained: number;
+  informationGiven: boolean;
+  /** What actually opened up, named, so the client can say so. */
+  unlockedMissions: string[];
+  unlockedContacts: string[];
+  debriefing: string;
+  activeCount: number;
+  deliverableCount: number;
+  message: string;
+}
+
+export interface MissionAbandonResponse {
+  missions: MissionDto[];
+  player: PlayerDto;
+  activeCount: number;
+  deliverableCount: number;
+  message: string;
+}
+
+export interface MissionPayload {
+  missionId: string;
 }

@@ -38,6 +38,7 @@ import {
 } from './crime.modifiers';
 import { getSkillEffects } from '../skills/skill.effects';
 import { getSkillLevelsTx } from '../skills/skill.service';
+import { advanceMissionProgressTx } from '../missions/mission.progress';
 
 export interface CrimeOutcome {
   crimeId: string;
@@ -378,6 +379,16 @@ export async function performCrime(
         cooldownUntil,
       },
     });
+
+    // Missions observe the attempt rather than duplicating it: the crime
+    // above is the whole of what happened, and this only records that it
+    // did. Inside the same transaction, under the lock already held.
+    await advanceMissionProgressTx(
+      tx,
+      playerId,
+      { kind: 'KRIM', crimeId: crime.id, districtId: district.id, success },
+      now,
+    );
 
     const outcome: CrimeOutcome = {
       crimeId: crime.id,

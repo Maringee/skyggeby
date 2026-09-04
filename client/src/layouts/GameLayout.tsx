@@ -9,6 +9,7 @@ import { projectedEnergy } from '@/lib/vitals';
 import { findNavEntry } from '@/nav/navigation';
 import { useAuth } from '@/state/AuthContext';
 import { MessagesProvider } from '@/state/MessagesContext';
+import { MissionsProvider } from '@/state/MissionsContext';
 
 /**
  * Chrome shared by every signed-in page: the permanent navigation, a slim
@@ -76,6 +77,7 @@ export function GameLayout() {
     // The unread count is shared by the navigation badge and the messages page,
     // so it is fetched once here rather than by each of them.
     <MessagesProvider>
+      <MissionsProvider>
     <div className="grain min-h-screen lg:pl-64">
       {/* Desktop navigation */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 lg:block">
@@ -150,6 +152,7 @@ export function GameLayout() {
         <Outlet />
       </main>
     </div>
+      </MissionsProvider>
     </MessagesProvider>
   );
 }

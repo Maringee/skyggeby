@@ -13,6 +13,7 @@ import {
   type ContactStatus,
 } from '@skyggeby/shared';
 import { prisma } from '../../db/prisma';
+import { advanceMissionProgressTx } from '../missions/mission.progress';
 import { AppError, notFound } from '../../lib/errors';
 import { pickOne } from '../../lib/random';
 import { lockPlayer } from '../economy/transaction.service';
@@ -260,6 +261,8 @@ export async function interactWithContact(
       where: { id: relationship.id },
       data: { trust: nextTrust, lastInteractionAt: new Date() },
     });
+
+    await advanceMissionProgressTx(tx, playerId, { kind: 'PRAT', contactId }, now);
 
     return {
       relationship: updated,

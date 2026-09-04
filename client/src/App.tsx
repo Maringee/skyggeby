@@ -13,6 +13,7 @@ import { LandingPage } from '@/pages/LandingPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { MessagesPage } from '@/pages/MessagesPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { MissionsPage } from '@/pages/MissionsPage';
 import { PropertiesPage } from '@/pages/PropertiesPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { PublicProfilePage } from '@/pages/PublicProfilePage';
@@ -81,6 +82,7 @@ export default function App() {
             <Route path="/okonomi/transaksjoner" element={<TransactionsPage />} />
             <Route path="/eiendeler" element={<AssetsPage />} />
             <Route path="/eiendom" element={<PropertiesPage />} />
+            <Route path="/oppdrag" element={<MissionsPage />} />
             <Route path="/meg" element={<ProfilePage />} />
             <Route path="/spiller/:username" element={<PublicProfilePage />} />
             <Route path="/meg/ferdigheter" element={<SkillsPage />} />

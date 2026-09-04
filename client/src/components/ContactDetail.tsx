@@ -1,11 +1,14 @@
 import { useEffect } from 'react';
 import { formatDateTime, formatRelativeTime } from '@skyggeby/shared';
-import type { ContactDto } from '@skyggeby/shared';
+import type { ContactDto, MissionDto } from '@skyggeby/shared';
 import { TrustBar } from './ContactCard';
+import { ContactMissions } from './ContactMissions';
 import { IconClose, IconLock, IconMap, IconUser } from './Icons';
 
 interface ContactDetailProps {
   contact: ContactDto;
+  /** This person's missions, as the server reported them. */
+  missions: MissionDto[];
   busy: boolean;
   onContact: (contactId: string) => void;
   onClose: () => void;
@@ -20,7 +23,13 @@ const UPCOMING = [
   { label: 'Be om tjeneste', hint: 'Ikke tilgjengelig ennå' },
 ];
 
-export function ContactDetail({ contact, busy, onContact, onClose }: ContactDetailProps) {
+export function ContactDetail({
+  contact,
+  missions,
+  busy,
+  onContact,
+  onClose,
+}: ContactDetailProps) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
@@ -154,6 +163,8 @@ export function ContactDetail({ contact, busy, onContact, onClose }: ContactDeta
             'Kontakt'
           )}
         </button>
+
+        <ContactMissions missions={missions} contactName={contact.name} />
 
         <div className="mt-5 border-t border-white/[0.06] pt-5">
           <p className="label-xs">Muligheter</p>

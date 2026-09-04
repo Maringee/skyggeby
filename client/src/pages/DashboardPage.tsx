@@ -28,6 +28,7 @@ import {
   IconUser,
 } from '@/components/Icons';
 import { Meter } from '@/components/Meter';
+import { MissionPanel } from '@/components/MissionPanel';
 import { PageHeader } from '@/components/PageHeader';
 import { StatCard } from '@/components/StatCard';
 import { useNow } from '@/lib/useNow';
@@ -222,6 +223,9 @@ export function DashboardPage() {
           <Meter value={Math.min(player.reputation, 3000)} max={3000} tone="violet" />
         </StatCard>
       </section>
+
+      {/* What is on the go. Renders nothing when there is nothing running. */}
+      <MissionPanel delay={320} />
 
       {/* Position + activity */}
       <section className="grid gap-4 lg:grid-cols-2">

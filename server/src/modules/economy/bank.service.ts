@@ -1,6 +1,14 @@
 import { BANK_WITHDRAWAL_FEE, formatMoney } from '@skyggeby/shared';
+import { prisma } from '../../db/prisma';
 import { badRequest } from '../../lib/errors';
-import { applyLedgerEntries, type LedgerEntry, type LedgerResult } from './transaction.service';
+import { advanceMissionProgressTx } from '../missions/mission.progress';
+import {
+  applyLedgerEntries,
+  applyLedgerEntriesTx,
+  lockPlayer,
+  type LedgerEntry,
+  type LedgerResult,
+} from './transaction.service';
 
 /**
  * Moves cash into the bank. The amount is validated server side; the client's
@@ -29,8 +37,18 @@ export async function deposit(
     },
   ];
 
-  const result = await applyLedgerEntries(playerId, entries);
-  return { ...result, message: `${formatMoney(amount)} satt inn på konto.` };
+  return prisma.$transaction(async (tx) => {
+    await lockPlayer(tx, playerId);
+
+    const result = await applyLedgerEntriesTx(tx, playerId, entries, { skipLock: true });
+
+    // Putting money in the bank is a thing a mission can ask for, and this is
+    // the only place it happens. The counter moves with the money or not at
+    // all - a deposit that rolled back must not have counted.
+    await advanceMissionProgressTx(tx, playerId, { kind: 'INNSKUDD', amount });
+
+    return { ...result, message: `${formatMoney(amount)} satt inn på konto.` };
+  });
 }
 
 /**

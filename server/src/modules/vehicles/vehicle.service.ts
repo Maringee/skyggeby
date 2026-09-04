@@ -8,6 +8,7 @@ import {
 import { prisma } from '../../db/prisma';
 import { AppError, badRequest, notFound } from '../../lib/errors';
 import { lockPlayer } from '../economy/transaction.service';
+import { advanceMissionProgressTx } from '../missions/mission.progress';
 import { buyAssetTx, sellAssetTx } from '../assets/asset.service';
 
 /** A vehicle together with the asset that holds its money side. */
@@ -352,6 +353,13 @@ export async function moveVehicle(
     if (claimed.count !== 1) {
       throw new AppError(409, 'ALLEREDE_FLYTTET', 'Kjøretøyet er allerede flyttet.');
     }
+
+    // Driving a car somewhere is not the same as going there yourself, and
+    // a mission that asks for both is asking for two separate things.
+    await advanceMissionProgressTx(tx, playerId, {
+      kind: 'KJOR',
+      districtId: to.id,
+    });
 
     const updated = await ownedVehicleTx(tx, playerId, vehicleId);
 

@@ -14,7 +14,7 @@
     "prisma:studio": "prisma studio",
     "test:db": "tsx tests/concurrency.test.ts",
     "test:ratelimit": "tsx tests/ratelimit.test.ts",
-    "test": "npm run test:db && npm run test:city && npm run test:information && npm run test:skills && npm run test:assets && npm run test:inventory && npm run test:contacts && npm run test:businesses && npm run test:messages && npm run test:profile && npm run test:vehicles && npm run test:properties && npm run test:deployment && npm run test:ratelimit",
+    "test": "npm run test:db && npm run test:city && npm run test:information && npm run test:skills && npm run test:assets && npm run test:inventory && npm run test:contacts && npm run test:businesses && npm run test:messages && npm run test:profile && npm run test:vehicles && npm run test:properties && npm run test:missions && npm run test:deployment && npm run test:ratelimit",
     "test:city": "tsx tests/city.test.ts",
     "test:information": "tsx tests/information.test.ts",
     "test:skills": "tsx tests/skills.test.ts",
@@ -27,6 +27,7 @@
     "test:profile": "tsx tests/player-profile.test.ts",
     "test:vehicles": "tsx tests/vehicles.test.ts",
     "test:properties": "tsx tests/properties.test.ts",
+    "test:missions": "tsx tests/missions.test.ts",
     "test:deployment": "tsx tests/deployment.test.ts"
   },
   "dependencies": {

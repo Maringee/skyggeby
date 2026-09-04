@@ -1,9 +1,11 @@
 import { formatRelativeTime } from '@skyggeby/shared';
-import type { ContactDto } from '@skyggeby/shared';
+import type { ContactDto, MissionDto } from '@skyggeby/shared';
 import { IconChevron, IconMap, IconUser } from './Icons';
 
 interface ContactCardProps {
   contact: ContactDto;
+  /** This person's missions, as the server reported them. */
+  missions: MissionDto[];
   busy: boolean;
   anyBusy: boolean;
   onContact: (contactId: string) => void;
@@ -49,12 +51,28 @@ export function TrustBar({ trust, label }: { trust: number; label: string }) {
 
 export function ContactCard({
   contact,
+  missions,
   busy,
   anyBusy,
   onContact,
   onOpen,
   delay,
 }: ContactCardProps) {
+  // One line, not a list: the card is a summary and the dialog is the detail.
+  // Work you can hand in outranks work you could start.
+  const ready = missions.filter((m) => m.deliverable).length;
+  const open = missions.filter((m) => m.availability === 'TILGJENGELIG').length;
+
+  const missionLine =
+    ready > 0
+      ? { text: `${ready} oppdrag klart til levering`, tone: 'text-neon' }
+      : open > 0
+        ? {
+            text: open === 1 ? 'Har et oppdrag til deg' : `Har ${open} oppdrag til deg`,
+            tone: 'text-violet-400',
+          }
+        : null;
+
   return (
     <article
       className="panel group animate-fade-up p-5 transition hover:border-white/[0.14]"
@@ -101,6 +119,11 @@ export function ContactCard({
           {contact.trustLabel}
         </p>
       </div>
+
+      {/* What this person actually has for you. Same data as the mission page. */}
+      {missionLine && (
+        <p className={`mt-3 text-xs ${missionLine.tone}`}>{missionLine.text}</p>
+      )}
 
       <dl className="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.05] pt-3">
         <div>

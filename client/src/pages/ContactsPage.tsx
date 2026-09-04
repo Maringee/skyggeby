@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { resolveDistrict } from '@skyggeby/shared';
-import type { ContactDto } from '@skyggeby/shared';
+import type { ContactDto, MissionDto } from '@skyggeby/shared';
 import { ApiError } from '@/api/client';
 import { api } from '@/api/endpoints';
 import { Alert } from '@/components/Alert';
@@ -15,6 +15,7 @@ export function ContactsPage() {
   const { player } = useAuth();
 
   const [contacts, setContacts] = useState<ContactDto[]>([]);
+  const [missions, setMissions] = useState<MissionDto[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [discovering, setDiscovering] = useState(false);
@@ -25,8 +26,12 @@ export function ContactsPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await api.contacts();
+      // The same mission list the mission page reads, fetched once and grouped
+      // by contact below. There is no second mission structure and no new
+      // endpoint: the server decides what is visible, what is locked and why.
+      const [res, missionRes] = await Promise.all([api.contacts(), api.missions()]);
       setContacts(res.contacts);
+      setMissions(missionRes.missions);
       setTotal(res.totalKnown);
       setError(null);
     } catch (err) {
@@ -83,6 +88,15 @@ export function ContactsPage() {
 
   const district = resolveDistrict(player.currentDistrictId);
   const open = contacts.find((c) => c.id === openId) ?? null;
+
+  // Grouped once rather than filtered per card, so a long contact list does not
+  // walk the mission array eighteen times.
+  const missionsByContact = new Map<string, MissionDto[]>();
+  for (const mission of missions) {
+    const bucket = missionsByContact.get(mission.contactId);
+    if (bucket) bucket.push(mission);
+    else missionsByContact.set(mission.contactId, [mission]);
+  }
 
   return (
     <div className="space-y-6">
@@ -184,6 +198,7 @@ export function ContactsPage() {
               <ContactCard
                 key={item.id}
                 contact={item}
+                missions={missionsByContact.get(item.id) ?? []}
                 busy={busyId === item.id}
                 anyBusy={busyId !== null}
                 onContact={contact}
@@ -198,6 +213,7 @@ export function ContactsPage() {
       {open && (
         <ContactDetail
           contact={open}
+          missions={missionsByContact.get(open.id) ?? []}
           busy={busyId === open.id}
           onContact={contact}
           onClose={() => setOpenId(null)}

@@ -170,3 +170,19 @@ export const IconHome = ({ className = base }: IconProps) => (
     <path d="M9.5 21v-6.5h5V21" />
   </svg>
 );
+
+/** A clipboard with a ticked line: what a mission actually is. */
+export const IconClipboard = ({ className = base }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className={className}>
+    <path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1Z" />
+    <path d="M8 6H6.5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H16" />
+    <path d="m9 13 2 2 4-4" />
+  </svg>
+);
+
+/** A check mark, for an objective that is done. */
+export const IconCheck = ({ className = base }: IconProps) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+    <path d="m5 12.5 4.5 4.5L19 7" />
+  </svg>
+);

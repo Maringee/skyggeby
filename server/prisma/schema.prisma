@@ -59,6 +59,7 @@ model Player {
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
   contacts      ContactRelationship[]
+  missions      Mission[]
 
   @@map("players")
 }
@@ -96,6 +97,7 @@ enum TransactionType {
   VIRKSOMHET_UTTAK
   EIENDOM_KJOP
   EIENDOM_SALG
+  OPPDRAG
   KORREKSJON
 }
 
@@ -400,6 +402,57 @@ model Business {
   @@index([playerId])
   @@index([playerId, districtId])
   @@map("businesses")
+}
+
+/// One mission a player has taken on.
+///
+/// The mission itself - who offers it, what it asks for, what it pays - lives
+/// in shared/src/missions.ts. This table stores only the part that differs per
+/// player, the same split the contacts use, so adding a mission needs no
+/// migration and `missionId` is validated against the catalogue server-side
+/// rather than by a foreign key.
+///
+/// There is deliberately no table for objectives, requirements, rewards or
+/// chains. Requirements and rewards are catalogue data evaluated on demand;
+/// chains are `requiresMissions` in that same catalogue. The only thing that
+/// cannot be derived is how far a counted action has got, and that is one
+/// integer.
+///
+/// `progressCount` therefore serves the single event objective a mission may
+/// carry. State objectives - carrying a tool, owning a place, standing in a
+/// district, knowing something current - are read from the database at
+/// delivery and need nothing stored here.
+model Mission {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// Matches an id from the shared catalogue.
+  missionId String
+  /// Who gave it out. Copied from the catalogue so the list can be filtered
+  /// and grouped without loading it.
+  contactId String
+
+  /// AKTIV | FULLFORT | AVBRUTT | UTLOPT. A database CHECK enforces the set.
+  status String @default("AKTIV")
+
+  /// Progress on the mission's one event objective. A CHECK keeps it >= 0.
+  progressCount Int @default(0)
+
+  acceptedAt  DateTime  @default(now())
+  /// Deadline, for the few missions that have one.
+  expiresAt   DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// A partial unique index in the database allows at most one AKTIV row per
+  /// (player, mission) - the same pattern the one-active-vehicle rule uses.
+  /// Completed and abandoned rows stay as history and are not covered by it.
+  @@index([playerId, status])
+  @@index([playerId, missionId])
+  @@map("missions")
 }
 
 /// One skill's level for one player.

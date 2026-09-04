@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import {
   IconBank,
+  IconClipboard,
   IconGrid,
   IconMail,
   IconMap,
@@ -66,6 +67,12 @@ export const NAV_ENTRIES: NavEntry[] = [
       { to: '/informasjon', label: 'Informasjon' },
       { to: '/kjoretoy', label: 'Kjøretøy' },
     ],
+  },
+  {
+    to: '/oppdrag',
+    label: 'Oppdrag',
+    description: 'Jobber folk vil ha gjort',
+    icon: IconClipboard,
   },
   {
     to: '/okonomi',

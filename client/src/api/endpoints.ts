@@ -19,6 +19,11 @@ import type {
   MessageReadResponse,
   MessageRecipientsResponse,
   MessageSendResponse,
+  MissionAbandonResponse,
+  MissionAcceptResponse,
+  MissionDeliverResponse,
+  MissionDetailResponse,
+  MissionListResponse,
   PlayerSearchResponse,
   PropertyBuyResponse,
   PropertyCatalogResponse,
@@ -155,6 +160,33 @@ export const api = {
   deleteMessage: (messageId: string) =>
     apiRequest<MessageDeleteResponse>(
       `/meldinger/${encodeURIComponent(messageId)}/slett`,
+      { method: 'POST' },
+    ),
+
+  missions: () => apiRequest<MissionListResponse>('/oppdrag'),
+
+  mission: (missionId: string) =>
+    apiRequest<MissionDetailResponse>(`/oppdrag/${encodeURIComponent(missionId)}`),
+
+  /**
+   * The client names a mission and nothing else. Requirements, objectives and
+   * rewards are all read from the server's own catalogue.
+   */
+  acceptMission: (missionId: string) =>
+    apiRequest<MissionAcceptResponse>(
+      `/oppdrag/${encodeURIComponent(missionId)}/godta`,
+      { method: 'POST' },
+    ),
+
+  deliverMission: (missionId: string) =>
+    apiRequest<MissionDeliverResponse>(
+      `/oppdrag/${encodeURIComponent(missionId)}/lever`,
+      { method: 'POST' },
+    ),
+
+  abandonMission: (missionId: string) =>
+    apiRequest<MissionAbandonResponse>(
+      `/oppdrag/${encodeURIComponent(missionId)}/avbryt`,
       { method: 'POST' },
     ),
 
